@@ -9,8 +9,8 @@ using System.Runtime.Intrinsics.X86;
 namespace Core3IntrinsicsBenchmarks
 {
     //[DisassemblyDiagnoser(printAsm: true, printSource: true)]
-    [GroupBenchmarksBy(BenchmarkLogicalGroupRule.ByCategory)]
-    [CategoriesColumn]
+    //[GroupBenchmarksBy(BenchmarkLogicalGroupRule.ByCategory)]
+    //[CategoriesColumn]
     public class IntegerBasicOps
     {
         [Params(/*4 * 1024,*/ 400 * 1024)]
@@ -37,7 +37,7 @@ namespace Core3IntrinsicsBenchmarks
             Span<int> storeSpan = intStore.Memory.Span;
             Span<long> longDataSpan = longData.Memory.Span;
             Span<long> longStoreSpan = longStore.Memory.Span;
-            Random r = new Random(1);
+            var r = new Random(1);
             for (int i = 0; i < NumberOfItems; i++)
             {
                 dataSpan[i] = i * 2 + r.Next(-1000, 1000);
@@ -52,6 +52,8 @@ namespace Core3IntrinsicsBenchmarks
         {
             intPool.Return(intData);
             intPool.Return(intStore);
+            longPool.Return(longData);
+            longPool.Return(longStore);
             intPool.Dispose();
         }
 
@@ -66,7 +68,7 @@ namespace Core3IntrinsicsBenchmarks
                 sp2[i] = sp1[i] + sp2[i];
             }
         }
-        /*
+
         [Benchmark]
         public unsafe void LongAdd()
         {
@@ -78,7 +80,7 @@ namespace Core3IntrinsicsBenchmarks
                 sp2[i] = sp1[i] + sp2[i];
             }
         }
-        */
+        
         [Benchmark]
         public unsafe void IntMultiply()
         {
@@ -115,7 +117,7 @@ namespace Core3IntrinsicsBenchmarks
             }
         }
 
-        /*
+        
         [Benchmark]
         public unsafe void LongMultiply()
         {
@@ -127,7 +129,7 @@ namespace Core3IntrinsicsBenchmarks
                 sp2[i] = sp1[i] * sp2[i];
             }
         }
-        */
+
         [Benchmark]
         public unsafe void IntAddVector256()
         {
@@ -164,7 +166,6 @@ namespace Core3IntrinsicsBenchmarks
             }
         }
 
-        /*
         [Benchmark]
         public unsafe void LongAddVector256()
         {
@@ -175,7 +176,7 @@ namespace Core3IntrinsicsBenchmarks
             {
                 sp2[i] = Avx2.Add(sp1[i], sp2[i]);
             }
-        } */
+        }
 
 
         [Benchmark]

@@ -9,14 +9,13 @@ using System.Runtime.Intrinsics.X86;
 namespace Core3IntrinsicsBenchmarks
 {
     //[DisassemblyDiagnoser(printAsm: true, printSource: true)]
-    [GroupBenchmarksBy(BenchmarkLogicalGroupRule.ByCategory)]
-    [CategoriesColumn]
+    //[GroupBenchmarksBy(BenchmarkLogicalGroupRule.ByCategory)]
+    //[CategoriesColumn]
     public class BasicOps
     {
-        [Params(/*32 * 1024, 256 * 1024,*/ 4 * 1024 * 1024)]
+        [Params(32 * 1024, 256 * 1024, 4 * 1024 * 1024)]
         public int ParamCacheSize { get; set; }
-
-        //private const int cacheSize = 32 * 1024; // one L1 cache, 32 kB
+       
         private int numberOfItems;
         public static int algn = 32;       
         public AlignedArrayPool<float> floatPool;
