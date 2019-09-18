@@ -73,11 +73,13 @@ namespace Core3IntrinsicsBenchmarks
                     zSquare = xSquare = ySquare = 0.0f;
                     inter = 0;
                     bool goOn;// = true;
-                    q = (currentX - 0.25f) * (currentX - 0.25f) + currentY * currentY;
-                    goOn = (q * (q + (currentX - 0.25)) > 0.25f * currentY * currentY); // out of cardioid? see https://en.wikipedia.org/wiki/Mandelbrot_set#Cardioid_/_bulb_checking
+                    float temp = (currentX - 0.25f);
+                    float temp1 = currentY * currentY;
+                    q = temp * temp + temp1;
+                    goOn = (q * (q + (temp)) > 0.25f * temp1); // out of cardioid? see https://en.wikipedia.org/wiki/Mandelbrot_set#Cardioid_/_bulb_checking
                     if (goOn)
                     {
-                        goOn = (currentX + 1.0f) * (currentX + 1.0f) + currentY * currentY > one16; // out of period-2 bulb?
+                        goOn = (currentX + 1.0f) * (currentX + 1.0f) + temp1 > one16; // out of period-2 bulb?
                         if (!goOn)
                         {
                             inter = 255;
@@ -116,6 +118,7 @@ namespace Core3IntrinsicsBenchmarks
             int resVectorNumber = 0;
 
             Vector256<float> xVec, yVec;
+            var zeroVec = Vector256<float>.Zero;
             var oneVec = Vector256.Create(1.0f);
             var fourVec = Vector256.Create(4.0f);
             var one4Vec = Vector256.Create(0.25f);
@@ -129,20 +132,23 @@ namespace Core3IntrinsicsBenchmarks
                 while (countX < xSpan.Length)
                 {
                     Vector256<float> currXVec = xSpan[countX];
-                    var xSquVec = Vector256.Create(0.0f);
-                    var ySquVec = Vector256.Create(0.0f);
-                    var zSquVec = Vector256.Create(0.0f);
-                    var interVec = Vector256.Create(0.0f);
+                    var xSquVec = zeroVec;
+                    var ySquVec = zeroVec;
+                    var zSquVec = zeroVec;
+                    var interVec = zeroVec;
                     Vector256<float> sumVector;
                     inter = 0;
                     bool goOn;
-                    qVec = Avx.Add(Avx.Multiply(Avx.Subtract(currXVec, one4Vec), Avx.Subtract(currXVec, one4Vec)), Avx.Multiply(currYVec, currYVec));
-                    Vector256<float> temp = Avx.Multiply(qVec, Avx.Add(qVec, Avx.Subtract(currXVec, one4Vec)));
-                    test = Avx.Compare(temp, Avx.Multiply(one4Vec, Avx.Multiply(currYVec, currYVec)), FloatComparisonMode.OrderedGreaterThanNonSignaling);
+                    Vector256<float> temp = Avx.Subtract(currXVec, one4Vec);
+                    Vector256<float> temp1 = Avx.Multiply(currYVec, currYVec);
+                    qVec = Avx.Add(Avx.Multiply(temp, temp), temp1);
+                    var temp2 = Avx.Multiply(qVec, Avx.Add(qVec, temp));
+                    test = Avx.Compare(temp2, Avx.Multiply(one4Vec, temp1), FloatComparisonMode.OrderedGreaterThanNonSignaling);
                     goOn = (Avx.MoveMask(test) > 0);
                     if(goOn)
                     {
-                        temp = Avx.Add(Avx.Multiply(Avx.Add(currXVec, oneVec), Avx.Add(currXVec, oneVec)), Avx.Multiply(currYVec, currYVec));
+                        temp2 = Avx.Add(currXVec, oneVec);
+                        temp = Avx.Add(Avx.Multiply(temp2, temp2), temp1);
                         test = Avx.Compare(temp, one16Vec, FloatComparisonMode.OrderedGreaterThanNonSignaling);
                         goOn = Avx.MoveMask(test) > 0;
                         if(!goOn)
@@ -156,7 +162,8 @@ namespace Core3IntrinsicsBenchmarks
                         yVec = Avx.Add(Avx.Subtract(Avx.Subtract(zSquVec, ySquVec), xSquVec), currYVec);
                         xSquVec = Avx.Multiply(xVec, xVec);
                         ySquVec = Avx.Multiply(yVec, yVec);
-                        zSquVec = Avx.Multiply(Avx.Add(xVec, yVec), Avx.Add(xVec, yVec));
+                        temp = Avx.Add(xVec, yVec);
+                        zSquVec = Avx.Multiply(temp, temp);
                         test = Avx.Compare(Avx.Add(xSquVec, ySquVec), fourVec, FloatComparisonMode.OrderedLessThanOrEqualNonSignaling); // <= 4.0?
                         sumVector = Avx.BlendVariable(Vector256<float>.Zero, oneVec, test);
 

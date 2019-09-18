@@ -13,12 +13,16 @@ Taking the new `System.Runtime.Intrinsics` namespace for a spin and comparing it
 - [What´s Missing?](#Missing)
 - [Some Benchmark Results](#Benchmarks)
 
+--------------------------------------
+--------------------------------------
 #### <a name="Intro"/>Introduction to Intrinsics ####
 
 The new functionality (available in Net Core 3.0 and beyond) under the `System.Runtime.Intrinsics` namespace will open up some the Intel and AMD processor intrinsics (see [Intel´s full guide here](https://software.intel.com/sites/landingpage/IntrinsicsGuide))) and a [Microsoft blog entry](https://devblogs.microsoft.com/dotnet/hardware-intrinsics-in-net-core/) by Tanner Gooding on the subject. The coverage is not 100% but I imagine it will grow further as time passes. ARM processor support is in the future.
 
 In a nutshell, the new functionality expands SIMD processing beyond what´s possible using `System.Numerics.Vector<T>` by adding dozens of new instructions.
 
+--------------------------------------
+--------------------------------------
 #### <a name="First"/> First steps ####
 
 You prepare your code by adding some `using` statements:
@@ -114,6 +118,8 @@ Performance
 
 This gives you the exact description of the operation(s) being performed and also performance data (the "Latency" value is "is the number of processor clocks it takes for an instruction to have its data available for use by another instruction", the "Throughput" is "the number of processor clocks it takes for an instruction to execute or perform its calculations". See [Intels´ definition here](https://software.intel.com/en-us/articles/measuring-instruction-latency-and-throughput))
 
+--------------------------------------
+--------------------------------------
 #### <a name="Load"/> Loading and storing data ####
 
 ##### Creating Vectors
@@ -226,6 +232,8 @@ Although moving data around using vectors seems pretty efficient, I was surprise
 ```
 An impressive 32 - 43% advantage... It shows that a properly optimized scalar method (probably using some very smart assembly instructions) beats a naïve vectorization with ease.
 
+--------------------------------------
+--------------------------------------
 #### <a name="Aligned"/> Aligned vs. Unaligned Memory
 
 If you look through the different `Load...` instructions available, you´ll notice that you have, for example, `LoadVector256(T*)` and `LoadAlignedVector256(T*)`.
@@ -234,13 +242,16 @@ If you look through the different `Load...` instructions available, you´ll noti
 
 In the past, aligned data used to work much better that unaligned data, but modern processors don´t really care, as long as your data is aligned to the natural OS´s boundary in order to avoid stradling cache line or page boundaries (see [this comment by T. Gooding](https://devblogs.microsoft.com/dotnet/hardware-intrinsics-in-net-core/#comment-2942), for example) 
 
-
+--------------------------------------
+--------------------------------------
 #### <a name="Cache"/> Dataset Sizes vs Caches ####
 
 Often overlooked, the size of your datasets may have an important impact on your processing times (apart from the obvious increase in elements): if all data fits in a processor core´s cache and only a few operations will be performed per data point, then memory acces times will be crucial and you´ll notice a non-linear increase in processing time vs. data size.
 
 > :warning: In other words, when you measure your loop in order to determine your gains (if any!) from using intrinsics, it´s important to test with *data sizes close to the real data*. For huge data, test with arrays several times bigger than the available cache size, at least.
 
+--------------------------------------
+--------------------------------------
 #### <a name="Basic"/> Basic Floating Point Math Operations ####
 
 As mentioned above, `System.Runtime.Intrinsics.X86` contains the SSE, AVX etc. functionality. You can add, substract, multiply and divide all kinds of vectors. 
@@ -386,6 +397,8 @@ R = HorizontalAdd(A, B)
 ```
 These instructions will combine multiplies with add or substract in several variants.
 
+--------------------------------------
+--------------------------------------
 #### <a name="Compare"/> Vector Comparisons #### 
 
 There are several intrinsics to compare vectors.
@@ -457,13 +470,20 @@ For each element in the third parameter (`mask`), `BlendVariable` will pick the 
 
 In the above snippet, `left`[0] = `-1.0f`, `right`[0] = `0.0f`. The mask is `0` (false) at this position, so the result vector´s first position gets the value from the **first** vector: `-1.0f`.
 
+
 ##### Scalar Results #####
 
 As mentioned above, there are some intrinsics to compare values that return a scalar (`int` or `bool`): `TestZ`, `TestC` etc and `MoveMask`.
 
+--------------------------------------
+--------------------------------------
+
 #### <a name="Missing"/> What´s Missing? #### 
 
 There are no [trigonometric functions](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#cats=Trigonometry) as yet: cosine, sine etc. are all missing. Maybe some others, but that´s the category that caught my eye.
+
+--------------------------------------
+--------------------------------------
 
 #### <a name="benchmarks"/> Benchmark Results ####
 
@@ -542,14 +562,26 @@ If we perform 3 FMA operations per step in the loop on the other hand, we get a 
 
 The processor will likely prefetch data while it performs operations, i´d assume, effectively hiding the access time.
 
+Comparing Vector256<float with `Vector<float>` we get:
+
+|                    Method | ParamCacheSizeBytes |        Mean |      Error |     StdDev | Ratio |
+|-------------------------- |-------------------- |------------:|-----------:|-----------:|------:|
+| Vector256FloatMultipleOps |              262144 |    17.93 us |  0.1017 us |  0.0849 us |  1.00 |
+|   VectorTFloatMultipleOps |              262144 |    18.39 us |  0.1776 us |  0.1483 us |  1.03 |
+|                           |                     |             |            |            |       |
+| Vector256FloatMultipleOps |            41943040 | 4,245.89 us | 50.9584 us | 45.1733 us |  1.00 |
+|   VectorTFloatMultipleOps |            41943040 | 5,083.92 us | 58.2083 us | 48.6065 us |  1.20 |
+
+Since `Vector<float>` does not implement Fma, the advantage of `Vector256` is to be expected.
+
+
 ##### Mixed `float` operations #####
 
 The [Mandelbrot set](https://en.wikipedia.org/wiki/Mandelbrot_set) is an all-time favorite to show off parallel processing. On my machine I get the following results for a 1920 X 1080 image (this is just generating values, not creating a bitmap):
 
-|          Method |      Mean |     Error |    StdDev |    Median | Ratio |
-|---------------- |----------:|----------:|----------:|----------:|------:|
-|     FloatMandel | 140.39 ms | 2.7897 ms | 4.2601 ms | 138.21 ms |  1.00 |
-| Vector256Mandel |  29.69 ms | 0.1525 ms | 0.1426 ms |  29.66 ms |  0.21 |
+|          Method |      Mean |     Error |    StdDev | Ratio |
+|---------------- |----------:|----------:|----------:|------:|
+|     FloatMandel | 134.92 ms | 1.1073 ms | 0.9247 ms |  1.00 |
+| Vector256Mandel |  25.98 ms | 0.1739 ms | 0.1626 ms |  0.19 |
 
-An almost 5x speedup is nice! The vector loop could probably be further optimized though, I just did a naïve translation of the scalar code.
-
+A 5.3x speedup is nice! The vector loop could probably be further optimized though, I just did a naïve translation of the scalar code.
