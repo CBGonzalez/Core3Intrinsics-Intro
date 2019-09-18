@@ -11,7 +11,7 @@ Taking the new `System.Runtime.Intrinsics` namespace for a spin and comparing it
 - [Basic Operations](#Basic)
 - [Comparisons](#Compare)
 - [What´s Missing?](#Missing)
-- [Benchmark Results](#Benchmarks)
+- [Some Benchmark Results](#Benchmarks)
 
 #### <a name="Intro"/>Introduction to Intrinsics ####
 
@@ -210,15 +210,6 @@ You can also go `unsafe` and loop through pointers, of course:
 ```
 No performance difference on my machine, though.
 
-#### <a name="Aligned"/> Aligned vs. Unaligned Memory
-
-If you look through the different `Load...` instructions available, you´ll notice that you have, for example, `LoadVector256(T*)` and `LoadAlignedVector256(T*)`.
-
-> :warning: The "Aligned" part refers to memory alignment of the pointer to the beginning of the <T> data: in order to use the `LoadAligned` version of the functions, your data needs to start at a specific boundary: for 256 bit vectors (32 bytes), the data ***needs*** to start at a location (pointer address) that is a multiple of 32 (for 128 bit vectors it needs to be aligned at 16 byte boundaries). Failure to do so can result in a runtime ***general protection fault***.
-
-In the past, aligned data used to work much better that unaligned data, but modern processors don´t really care, as long as your data is aligned to the natural OS´s boundary in order to avoid stradling cache line boundaries or page boundaries (see [this comment by T. Gooding](https://devblogs.microsoft.com/dotnet/hardware-intrinsics-in-net-core/#comment-2942), for example) 
-
-
 ##### Using intrinsics to copy memory? A disappointment... #####
 
 Although moving data around using vectors seems pretty efficient, I was surprised to measure `System.Runtime.CompilerServices.Unsafe.CopyBlock(ref byte destination, ref byte source, uint byteCount)` as faster, independently of data size (i.e. even data far bigger than cache will be copied efficiently). Of course it´s unsafe in the sense that you need to know what you are doing (not `unsafe` though).
@@ -234,6 +225,15 @@ Although moving data around using vectors seems pretty efficient, I was surprise
 
 ```
 An impressive 32 - 43% advantage... It shows that a properly optimized scalar method (probably using some very smart assembly instructions) beats a naïve vectorization with ease.
+
+#### <a name="Aligned"/> Aligned vs. Unaligned Memory
+
+If you look through the different `Load...` instructions available, you´ll notice that you have, for example, `LoadVector256(T*)` and `LoadAlignedVector256(T*)`.
+
+> :warning: The "Aligned" part refers to memory alignment of the pointer to the beginning of the <T> data: in order to use the `LoadAligned` version of the functions, your data needs to start at a specific boundary: for 256 bit vectors (32 bytes), the data ***needs*** to start at a location (pointer address) that is a multiple of 32 (for 128 bit vectors it needs to be aligned at 16 byte boundaries). Failure to do so can result in a runtime ***general protection fault***.
+
+In the past, aligned data used to work much better that unaligned data, but modern processors don´t really care, as long as your data is aligned to the natural OS´s boundary in order to avoid stradling cache line or page boundaries (see [this comment by T. Gooding](https://devblogs.microsoft.com/dotnet/hardware-intrinsics-in-net-core/#comment-2942), for example) 
+
 
 #### <a name="Cache"/> Dataset Sizes vs Caches ####
 
@@ -284,9 +284,9 @@ The `Avx.DotProduct` is a bit out of the common:
                 right = Vector256.Create(1.0f, 2.0f, 3.0f, 4.0f, 50.0f, 60.0f, 70.0f, 80.0f);   
                 result = Avx.DotProduct(left, right, 0b1111_0001); // result = <-30, 0, 0, 0, -17400, 0, 0, 0>
 ```
-This will actually create **2** products of 128 bit vectors: from the first four elements of `left` and `right`, stored on the first element of `result`, and the same for the right 4 elements, stored on the 5th element. In other words, it will perform a dot product on two 128 bit float vectors independently. It can be visualized as doing the dot product of 2 four float element vectors separately and simultaneously.
+This will actually create **2** dot products of 128 bit vectors: from the first four elements of `left` and `right`, stored on the first element of `result`, and the same for the right 4 elements, stored on the 5th element. In other words, it will perform a dot product on two 128 bit float vectors independently. It can be visualized as doing the dot product of 2 four float element vectors separately and simultaneously.
 
-You can control which product is performed by using the 4 high order bits of the third parameter **in reverse order**: all ones means do all 4 products (on each 128 bit half). A value of `0b0001` would mean that only the **first** element´s products is performed, a value of `0b1010` will multiply first and third:
+You can control which product is performed by using the 4 high order bits of the third parameter **in reverse order**: all ones means do all 4 products (on each 128 bit half). A value of `0b0001` would mean that only the **first** element´s products is performed, a value of `0b1010` will multiply second and fourth:
 
 ``` C#
                 result = Avx.DotProduct(left, right, 0b1010_0001); // result = <-20, 0, 0, 0, -10000, 0, 0, 0>
@@ -294,7 +294,7 @@ You can control which product is performed by using the 4 high order bits of the
 
 If you think of vectors with x, y, z and w components, the order in which you turn the product on or off is thus (w, z, y, x).
 
-The second half of the byte indicates where to store the dot product results, again in **reverse order**: `0001` means store the result in the first elements of each 128 bit vector.
+The second half of the third parameter byte indicates **where to store** the dot product results, again in **reverse order**: `0001` means store the result in the first elements of each 128 bit vector.
 
 ``` ini
 R = DotProduct(A, B, bitMask)
@@ -353,7 +353,7 @@ In order to have finer control you also have `RoundToNearestInteger` , `RoundToN
                 result = Avx.HorizontalSubtract(left, right); // result = <0, 0, 0, 0, 0, 0, 0, 0>
 ```
 
-`HorizontalAdd` will add element 0 and 1 from `left`, then elements 2 and 3. They get stored in elements 0 and 1 of `result`. The it goes on with the same for `right` and stores the results in elements 2 and 3 of `result`; then further...
+`HorizontalAdd` will add element 0 and 1 from `left`, then elements 2 and 3. They get stored in elements 0 and 1 of `result`. Then it goes on with the same for `right` and stores the results in elements 2 and 3 of `result`; then further...
 
 ``` ini  
 R = HorizontalAdd(A, B)       
@@ -371,7 +371,7 @@ R = HorizontalAdd(A, B)
   
 ```
 
-##### FMA - Fused Multiply #####
+##### FMA - Fused Multiply Operations #####
 
 *__m256 _mm256_fmadd_ps* etc.
 
@@ -386,19 +386,31 @@ R = HorizontalAdd(A, B)
 ```
 These instructions will combine multiplies with add or substract in several variants.
 
-#### <a name="Compare"/> Comparisons #### 
+#### <a name="Compare"/> Vector Comparisons #### 
 
-There are several intrinsics to compare values.
+There are several intrinsics to compare vectors.
 
 ##### Vector results
 
-`Avx.Compare(vector a, vector b, flag)` will compare both vectors according to the `FloatComparisonMode` flag given.
+A set of `Sse.Compare...` exist for **128-bit vectors**:
+
+``` C#
+                var left128 = Vector128.Create(1.0f, 2.0f, 3.0f, 4.0f);
+                var right128 = Vector128.Create(2.0f, 3.0f, 4.0f, 5.0f);
+                Vector128<float> compResult128 = Sse.CompareGreaterThan(left128, right128); // compResult128 = <0, 0, 0, 0>
+```
+
+You also have `CompareLessThanOrEqual`, `CompareNotEqual` and many more.
+
+If the comparison is `false` for a given element, the result vector will have a zero in that position. If `true` the position will be occupied by a value of all bits set to 1 (which results in `NaN` for `float` and `double`).
+
+For **256-bit vectors**, `Avx.Compare(vector a, vector b, flag)` will compare both vectors according to the `FloatComparisonMode` flag given.
 ``` C#
                 left = Vector256.Create(-1.0f, 3.0f, -3.0f, 4.0f, -50.0f, 60.0f, -70.0f, 80.0f);
                 right = Vector256.Create(0.0f, 2.0f, 3.0f, 2.0f, 50.0f, -60.0f, 70.0f, -80.0f);
                 var compareResult = Avx.Compare(left, right, FloatComparisonMode.OrderedGreaterThanNonSignaling); // compareResult = <0, NaN, 0, NaN, 0, NaN, 0, NaN>
 ``` 
-`FloatComparisonMode.OrderedGreaterThanNonSignaling` will compare if elements in `left` are greater than elements in `right`. If the comparison is `false`, the result vector will have a zero in that position. If `true` the position will be occupied by a value of all bits set to 1 (which results in `NaN` for `float` and `double`).
+`FloatComparisonMode.OrderedGreaterThanNonSignaling` will compare if elements in `left` are greater than elements in `right`. As above, if the comparison is `false`, the result vector will have a zero in that position. If `true` the position will be occupied by a value of all bits set to 1 (which results in `NaN` for `float` and `double`).
 
 > The `Ordered...` part of the flag´s name refers to how `NaN` in the vectors are treated, the `...NonSignaling` means to not throw exceptions when NaNs occur, although I am not really sure how this works yet [TO BE CONTINUED].
 
@@ -416,9 +428,9 @@ Once you have the comparison result, there are several things you can do with it
                 }
 ```
 
-`MoveMask` will create an `int` which bits indicate the elements which are `true` (in reality, it will copy each element´s highes order bit, which comes down to the same). The `int` will list the elements **in reverse order**.
+`MoveMask` will create an `int` which bits indicate the elements which are `true` (in reality, it will copy each element´s highest order bit, which comes down to the same, since `true` has all bits set). The `int` will list the elements **in reverse order**.
 
-If you don´t need to know which element satisfies the comparison but just know if all did, you can do:
+If you don´t need to know which element satisfies the comparison but just determine if all did, you can do:
 
 ``` C#
                 left = Vector256.Create(-1.0f, 3.0f, -3.0f, 4.0f, -50.0f, 60.0f, -70.0f, 80.0f);
@@ -441,7 +453,7 @@ You can also use the resulting vector to selectively load vector elements:
                 Vector256<float> mixed = Avx.BlendVariable(left, right, mask); //  mixed = <-1, 2, -3, 2, -50, -60, -70, -80>
 ```
 
-For each element in the third parameter (`mask`), `BlendVariable` will pick the correspondent element from the **second** vector (`right` in the above snippet) if the mask´s value is **`true`**, from the first vector otherwise.
+For each element in the third parameter (`mask`), `BlendVariable` will pick the correspondent element from the **second** vector (`right` in the above snippet) if the mask´s value is **`true`**; otherwise it will pick the element from the first vector.
 
 In the above snippet, `left`[0] = `-1.0f`, `right`[0] = `0.0f`. The mask is `0` (false) at this position, so the result vector´s first position gets the value from the **first** vector: `-1.0f`.
 
@@ -457,7 +469,7 @@ There are no [trigonometric functions](https://software.intel.com/sites/landingp
 
 Some benchmarks, with small data sizes (i. e. the data should fit into L2 cache) and larger sizes (i. e. 10 x L3 cachesize ) on my machine.
 
-##### FMA #####
+##### FMA with `floats` #####
 
 
 A simple scalar loop:
@@ -516,7 +528,7 @@ Intel Core i7-4500U CPU 1.80GHz (Haswell), 1 CPU, 4 logical and 2 physical cores
 |  FmaMultiplyAddvector256Float |            41943040 | 4,021.671 us |  75.5671 us |  70.6856 us |  0.78 |    0.04 |
 
 
-As expected for small number of operations, the memory access times take their tolls: only a 22% time reduction for larger data sizes with vector intrinsics.
+As expected for small number of operations inside the loop, the memory access times take their tolls: only a 22% time reduction for larger data sizes with vector intrinsics. (Although 22% could really be many hours for really huge jobs, of course...)
 
 If we perform 3 FMA operations per step in the loop on the other hand, we get a consistent 2.2x speedup (see the source code for implementation of the test):
 
@@ -528,7 +540,16 @@ If we perform 3 FMA operations per step in the loop on the other hand, we get a 
 |    **ScalarFloatMultipleOps** |            **41943040** | **8,848.52 us** | **256.5261 us** | **748.299 us** | **9,073.76 us** |  **1.00** |    **0.00** |
 | Vector256FloatMultipleOps |            41943040 | 4,093.59 us |  80.3949 us |  95.704 us | 4,046.29 us |  0.45 |    0.04 |
 
+The processor will likely prefetch data while it performs operations, i´d assume, effectively hiding the access time.
 
+##### Mixed `float` operations #####
 
+The [Mandelbrot set](https://en.wikipedia.org/wiki/Mandelbrot_set) is an all-time favorite to show off parallel processing. On my machine I get the following results for a 1920 X 1080 image (this is just generating values, not creating a bitmap):
 
+|          Method |      Mean |     Error |    StdDev |    Median | Ratio |
+|---------------- |----------:|----------:|----------:|----------:|------:|
+|     FloatMandel | 140.39 ms | 2.7897 ms | 4.2601 ms | 138.21 ms |  1.00 |
+| Vector256Mandel |  29.69 ms | 0.1525 ms | 0.1426 ms |  29.66 ms |  0.21 |
+
+An almost 5x speedup is nice! The vector loop could probably be further optimized though, I just did a naïve translation of the scalar code.
 

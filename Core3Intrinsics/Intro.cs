@@ -50,6 +50,10 @@ namespace Core3Intrinsics
                 compareResult = Avx.Compare(nanInFirstPosition, right, FloatComparisonMode.UnorderedEqualNonSignaling);
                 compareResult = Avx.Compare(InfInFirstPosition, right, FloatComparisonMode.UnorderedNotLessThanOrEqualNonSignaling);
                 compareResult = Avx.Compare(InfInFirstPosition, right, FloatComparisonMode.OrderedGreaterThanNonSignaling);
+                var left128 = Vector128.Create(1.0f, 2.0f, 3.0f, 4.0f);
+                var right128 = Vector128.Create(2.0f, 3.0f, 4.0f, 5.0f);
+                Vector128<float> compResult128 = Sse.CompareGreaterThan(left128, right128); // compResult128 = <0, 0, 0, 0>
+                
                 int res = Avx.MoveMask(compareResult);
                 if (Fma.IsSupported)
                 {

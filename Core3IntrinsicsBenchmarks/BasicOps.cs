@@ -106,7 +106,7 @@ namespace Core3IntrinsicsBenchmarks
             {
                 sp2[i] = sp1[i] * sp12[i] + sp13[i];
             }
-        } */
+        }
 
         [BenchmarkCategory("MultiplyAdd"), Benchmark(Baseline = true)]
         public unsafe void ScalarFloatMultipleOps()
@@ -138,10 +138,10 @@ namespace Core3IntrinsicsBenchmarks
                 r[i] = Fma.MultiplyAdd(r[i], d1[i], d1[i]);
                 r[i] = Fma.MultiplyAdd(d1[i], d2[i], r[i]);
             }
-        }
-        /*
-        [BenchmarkCategory("MultiplyAdd"), Benchmark]
-        public unsafe void MultiplyAddScalarDouble()
+        }*/
+        
+        [BenchmarkCategory("MultiplyAdd"), Benchmark(Baseline = true)]
+        public unsafe void DoubleMultipleOps()
         {
             var sp1 = new ReadOnlySpan<double>(dataD, 0, numberOfDoubleItems);
             var sp12 = new ReadOnlySpan<double>(dataD2, 0, numberOfDoubleItems);
@@ -151,9 +151,11 @@ namespace Core3IntrinsicsBenchmarks
             for (int i = 0; i < sp1.Length; i++)
             {
                 sp2[i] = sp1[i] * sp12[i] + sp13[i];
+                sp2[i] = sp2[i] * sp1[i] + sp1[i];
+                sp2[i] = sp1[i] * sp1[i] + sp2[i];
             }
         }
-
+        /*
         [BenchmarkCategory("MultiplyAdd"), Benchmark]
         public unsafe void FmaMultiplyAddvector256Float()
         {            
@@ -167,9 +169,9 @@ namespace Core3IntrinsicsBenchmarks
                 r[i] = Fma.MultiplyAdd(d1[i], d2[i], d3[i]);
             }
         }
-
+        */
         [BenchmarkCategory("MultiplyAdd"), Benchmark]
-        public unsafe void FmaMultiplyAddvector256Double()
+        public unsafe void Vector256DoubleMultipleOps()
         {
             ReadOnlySpan<Vector256<double>> d1 = MemoryMarshal.Cast<double, Vector256<double>>(new Span<double>(dataD, 0, numberOfDoubleItems));
             ReadOnlySpan<Vector256<double>> d2 = MemoryMarshal.Cast<double, Vector256<double>>(new Span<double>(dataD2, 0, numberOfDoubleItems));
@@ -179,8 +181,10 @@ namespace Core3IntrinsicsBenchmarks
             for (int i = 0; i < d1.Length; i++)
             {
                 r[i] = Fma.MultiplyAdd(d1[i], d2[i], d3[i]);
+                r[i] = Fma.MultiplyAdd(r[i], d1[i], d1[i]);
+                r[i] = Fma.MultiplyAdd(d1[i], d2[i], r[i]);
             }
-        } /*
+        }
 
         /*
         [BenchmarkCategory("MultiplyAdd"), Benchmark]
