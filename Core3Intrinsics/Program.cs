@@ -8,7 +8,7 @@ namespace Core3Intrinsics
         static Loading ld;
         static unsafe void Main()
         {
-            Console.WriteLine("Testing");
+            /*Console.WriteLine("Testing");
             float real1 = 2.5f;
             float ima1 = -3.5f;
             float real2 = 3.5f;
@@ -23,7 +23,7 @@ namespace Core3Intrinsics
             System.Diagnostics.Debug.Assert(mo == Complex.Multiply(comp1, comp2).X);
             mo = real1 * ima2 + ima1 * real2;
             System.Diagnostics.Debug.Assert(mo == Complex.Multiply(comp1, comp2).Y);
-            _ = Console.ReadLine();
+            _ = Console.ReadLine(); */
             Intro intro = new Intro();
             ld = new Loading();
             Console.WriteLine("Starting ...");

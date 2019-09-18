@@ -28,13 +28,13 @@ namespace Core3IntrinsicsBenchmarks
        
         [Params(16 * 1024, 128 * 1024, 1024 * 1024, 2 * 1024 * 1024, 8 * 1024 * 1024)] // half L1, half L2, half L3, 2 * L3
         public int NumberOfBytes { get ; set; }
-        private int vectorNumberOfItems, vectorFloatStep;
-        public static int algn = 32;
-        int numberOfFloatItems;
 
-        public AlignedArrayPool<float> alignedArrayPool = new AlignedArrayPool<float>();//, aligned16Store;       
-        AlignedMemoryHandle<float> dataMemory, storeMemory, data16Memory, store16Memory;        
-        private static float[] arr1, arr2;
+        private int vectorNumberOfItems, vectorFloatStep;        
+        private int numberOfFloatItems;
+
+        private static readonly AlignedArrayPool<float> alignedArrayPool = new AlignedArrayPool<float>();
+        private static AlignedMemoryHandle<float> dataMemory, storeMemory, data16Memory, store16Memory;
+        //private static float[] arr1, arr2;
 
         [GlobalSetup]
         public unsafe void GlobalSetup()
@@ -47,15 +47,11 @@ namespace Core3IntrinsicsBenchmarks
             storeMemory = alignedArrayPool.Rent(numberOfFloatItems);
             data16Memory = alignedArrayPool.Rent(numberOfFloatItems, 16);
             store16Memory = alignedArrayPool.Rent(numberOfFloatItems, 16);
-            
-            arr1 = ArrayPool<float>.Shared.Rent(numberOfFloatItems);
-            arr2 = ArrayPool<float>.Shared.Rent(numberOfFloatItems);            
 
             for (int i = 0; i < numberOfFloatItems; i++)
             {
                 dataMemory.Memory.Span[i] = i;
                 data16Memory.Memory.Span[i] = i;
-                arr1[i] = i;                
             }            
         }
 
@@ -66,8 +62,6 @@ namespace Core3IntrinsicsBenchmarks
             alignedArrayPool.Return(storeMemory);
             alignedArrayPool.Return(data16Memory);
             alignedArrayPool.Return(store16Memory);
-            ArrayPool<float>.Shared.Return(arr1);
-            ArrayPool<float>.Shared.Return(arr2);
         }
         
         [BenchmarkCategory("Aligned Memory"), Benchmark]
@@ -86,8 +80,7 @@ namespace Core3IntrinsicsBenchmarks
         {
             ReadOnlySpan<float> dataAl = MemoryMarshal.Cast<byte, float>(new ReadOnlySpan<byte>(dataMemory.MemoryHandle.Pointer, dataMemory.ByteArrayLength));
             Span<float> storeAl = MemoryMarshal.Cast<byte, float>(new Span<byte>(storeMemory.MemoryHandle.Pointer, storeMemory.ByteArrayLength));
-            //ReadOnlySpan<float> dataAl = aligned32Mem1.Span;
-            //Span<float> storeAl = aligned32Mem2.Span;
+
             int step = 4;
             for (int i = 0; i < dataAl.Length; i += step)
             {
@@ -101,32 +94,29 @@ namespace Core3IntrinsicsBenchmarks
         [BenchmarkCategory("Unaligned Memory"), Benchmark]
         public unsafe void PtrCopyUnrolled()
         {
-            fixed(float* pt1 = &arr1[0])
+            float* arr1Ptr = (float*)data16Memory.MemoryHandle.Pointer;
+            float* arr2Ptr = (float*)store16Memory.MemoryHandle.Pointer;
+
+            int i = 0;
+            while (i < numberOfFloatItems)
             {
-                fixed(float* pt2 = &arr2[0])
-                {
-                    float* arr1Ptr = pt1;
-                    float* arr2Ptr = pt2;
-                    int i = 0;
-                    while (i < numberOfFloatItems)
-                    {
-                        *arr2Ptr = *arr1Ptr;
-                        arr1Ptr++;
-                        arr2Ptr++;
-                        *arr2Ptr = *arr1Ptr;
-                        arr1Ptr++;
-                        arr2Ptr++;
-                        *arr2Ptr = *arr1Ptr;
-                        arr1Ptr++;
-                        arr2Ptr++;
-                        *arr2Ptr = *arr1Ptr;
-                        arr1Ptr++;
-                        arr2Ptr++;
+                *arr2Ptr = *arr1Ptr;
+                arr1Ptr++;
+                arr2Ptr++;
+                *arr2Ptr = *arr1Ptr;
+                arr1Ptr++;
+                arr2Ptr++;
+                *arr2Ptr = *arr1Ptr;
+                arr1Ptr++;
+                arr2Ptr++;
+                *arr2Ptr = *arr1Ptr;
+                arr1Ptr++;
+                arr2Ptr++;
                         
-                        i += 4;
-                    }
-                }
+                i += 4;
             }
+                
+            
         }        
         
         [BenchmarkCategory("Aligned Memory"), Benchmark]
@@ -135,9 +125,8 @@ namespace Core3IntrinsicsBenchmarks
             Unsafe.CopyBlock(ref storeMemory.ByteRef, ref dataMemory.ByteRef, (uint)(numberOfFloatItems * sizeof(float)));             
         }
 
-        
+
         [BenchmarkCategory("Aligned Memory"), Benchmark(Baseline = true)]
-        
         public unsafe void VectorStoreAlignedUnsafe()
         {
             float* currSpPtr = (float*)dataMemory.MemoryHandle.Pointer;
@@ -182,21 +171,6 @@ namespace Core3IntrinsicsBenchmarks
                 i++;
             }
         }
-        
-        [BenchmarkCategory("Unaligned Memory"), Benchmark]        
-        public void VectorStoreArrayRentedBufferSafe()
-        {
-            ReadOnlySpan<Vector256<float>> readMem = MemoryMarshal.Cast<float, Vector256<float>>(arr1);
-            Span<Vector256<float>> writeMem = MemoryMarshal.Cast<float, Vector256<float>>(arr2);
-
-            int i = 0;
-
-            while (i < vectorNumberOfItems)
-            {
-                writeMem[i] = readMem[i];
-                i++;
-            }
-        }
 
         [BenchmarkCategory("Unaligned Memory"), Benchmark]
         public unsafe void VectorStoreArrayMemPtrUnaligned()
@@ -213,7 +187,7 @@ namespace Core3IntrinsicsBenchmarks
         }
 
         [BenchmarkCategory("Unaligned Memory"), Benchmark]
-        public void VectorArraySafe()
+        public void VectorArraySafeUnaligned()
         {            
             ReadOnlySpan<Vector256<float>> readMem = MemoryMarshal.Cast<float, Vector256<float>>(data16Memory.Memory.Span);
             Span<Vector256<float>> writeMem = MemoryMarshal.Cast<float, Vector256<float>>(store16Memory.Memory.Span);
@@ -226,9 +200,8 @@ namespace Core3IntrinsicsBenchmarks
             }
         }
 
-        
-        [BenchmarkCategory("Unaligned Memory"), Benchmark(Baseline = true)]
-        public unsafe void VectorStoreUnsafe()
+        [BenchmarkCategory("Unaligned Memory"), Benchmark]
+        public unsafe void VectorStoreUnsafeUnaligned()
         {            
             float* currSpPtr = (float*)data16Memory.MemoryHandle.Pointer;
             float* currSpPtr2 = (float*)store16Memory.MemoryHandle.Pointer;
