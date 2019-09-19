@@ -18,11 +18,13 @@ namespace Core3IntrinsicsBenchmarks
         public int ParamCacheSizeBytes { get; set; }
 
         private int numberOfFloatItems, numberOfDoubleItems;
-        private static int algn = 32;       
-        private AlignedArrayPool<float> floatPool;
-        private AlignedArrayPool<double> doublePool;
-        private AlignedMemoryHandle<float> dataMemory, dataMemory2, dataMemory3, resultMemory;//
-        private AlignedMemoryHandle<double> dataDoubleMemory, resultDoubleMemory;
+        //To test aligned vs unaligned memory
+        //private readonly AlignedMemoryHandle<float> dataMemory;
+        //private readonly AlignedMemoryHandle<float> dataMemory2;
+        //private readonly AlignedMemoryHandle<float> dataMemory3;
+        //private readonly AlignedMemoryHandle<float> resultMemory;
+        //private readonly AlignedMemoryHandle<double> dataDoubleMemory;
+        //private readonly AlignedMemoryHandle<double> resultDoubleMemory;
         private float[] data, data2, data3, result;
         private double[] dataD, dataD2, dataD3, resultD;
 
@@ -31,14 +33,15 @@ namespace Core3IntrinsicsBenchmarks
         {
             numberOfFloatItems = ParamCacheSizeBytes / sizeof(float) / 4; // make sure that all data fits
             numberOfDoubleItems = ParamCacheSizeBytes / sizeof(double) / 4;
-            floatPool = new AlignedArrayPool<float>();
-            doublePool = new AlignedArrayPool<double>();
-            dataMemory = floatPool.Rent(numberOfFloatItems);
-            dataMemory2 = floatPool.Rent(numberOfFloatItems);
-            dataMemory3 = floatPool.Rent(numberOfFloatItems);
-            resultMemory = floatPool.Rent(numberOfFloatItems);
-            dataDoubleMemory = doublePool.Rent(numberOfDoubleItems);
-            resultDoubleMemory = doublePool.Rent(numberOfDoubleItems);
+            //To test aligned vs unaligned memory
+            //floatPool = new AlignedArrayPool<float>();
+            //doublePool = new AlignedArrayPool<double>();
+            //dataMemory = floatPool.Rent(numberOfFloatItems);
+            //dataMemory2 = floatPool.Rent(numberOfFloatItems);
+            //dataMemory3 = floatPool.Rent(numberOfFloatItems);
+            //resultMemory = floatPool.Rent(numberOfFloatItems);
+            //dataDoubleMemory = doublePool.Rent(numberOfDoubleItems);
+            //resultDoubleMemory = doublePool.Rent(numberOfDoubleItems);
             data = ArrayPool<float>.Shared.Rent(numberOfFloatItems);
             data2 = ArrayPool<float>.Shared.Rent(numberOfFloatItems);
             data3 = ArrayPool<float>.Shared.Rent(numberOfFloatItems);
@@ -47,42 +50,34 @@ namespace Core3IntrinsicsBenchmarks
             dataD2 =  ArrayPool<double>.Shared.Rent(numberOfDoubleItems);
             dataD3 =  ArrayPool<double>.Shared.Rent(numberOfDoubleItems);
             resultD = ArrayPool<double>.Shared.Rent(numberOfDoubleItems);
-            var dataSpan = new Span<float>(dataMemory.MemoryHandle.Pointer, numberOfFloatItems);
-            var dataSpan2 = new Span<float>(dataMemory2.MemoryHandle.Pointer, numberOfFloatItems);
-            var dataSpan3 = new Span<float>(dataMemory3.MemoryHandle.Pointer, numberOfFloatItems);
-            var resultSpan = new Span<float>(resultMemory.MemoryHandle.Pointer, numberOfFloatItems);
-            var dataDoubleSpan = new Span<double>(dataDoubleMemory.MemoryHandle.Pointer, numberOfDoubleItems);
-            var resultDoubleSpan = new Span<double>(resultDoubleMemory.MemoryHandle.Pointer, numberOfDoubleItems);
+            
 
             for (int i = 0; i < numberOfFloatItems; i++)
             {                
-                dataSpan[i] = i + 1.0f;
-                data[i] = i + 1.0f;
+                data[i] = i + 1.0f;                
                 data2[i] = i + 1.0f;
-                data3[i] = i + 1.0f;
-                dataSpan2[i] = i + 2.0f;
-                dataSpan3[i] = i + 3.0f;
-                resultSpan[i] = 0.0f;
+                data3[i] = i + 1.0f;                
                 result[i] = 0.0f;                
             }
             for(int i = 0; i < numberOfDoubleItems; i++)
             {
-                dataDoubleSpan[i] = i + 1.0;
-                resultDoubleSpan[i] = 0.0;
+                dataD[i] = i + 1.0;
+                resultD[i] = 0.0;
             }
         }
 
         [GlobalCleanup]
         public void GlobalCleanup()
-        {           
-            floatPool.Return(resultMemory, false);
-            floatPool.Return(dataMemory, false);
-            floatPool.Return(dataMemory2, false);
-            floatPool.Return(dataMemory3, false);
-            doublePool.Return(resultDoubleMemory, false);
-            doublePool.Return(dataDoubleMemory, false);
-            floatPool.Dispose();
-            doublePool.Dispose();
+        {
+            //To test aligned vs unaligned memory
+            //floatPool.Return(resultMemory, false);
+            //floatPool.Return(dataMemory, false);
+            //floatPool.Return(dataMemory2, false);
+            //floatPool.Return(dataMemory3, false);
+            //doublePool.Return(resultDoubleMemory, false);
+            //doublePool.Return(dataDoubleMemory, false);
+            //floatPool.Dispose();
+            //doublePool.Dispose();
             ArrayPool<float>.Shared.Return(data);
             ArrayPool<float>.Shared.Return(data2);
             ArrayPool<float>.Shared.Return(data3);
@@ -109,7 +104,7 @@ namespace Core3IntrinsicsBenchmarks
         } */
         
         [BenchmarkCategory("MultiplyAdd"), Benchmark(Baseline = true)]
-        public unsafe void ScalarFloatMultipleOps()
+        public void ScalarFloatMultipleOps()
         {
             var sp1 = new ReadOnlySpan<float>(data, 0, numberOfFloatItems);
             var sp12 = new ReadOnlySpan<float>(data2, 0, numberOfFloatItems);
@@ -123,9 +118,9 @@ namespace Core3IntrinsicsBenchmarks
                 sp2[i] = sp1[i] * sp1[i] + sp2[i];
             }
         }
-        /*
-        [BenchmarkCategory("MultiplyAdd"), Benchmark(Baseline = true)]
-        public unsafe void Vector256FloatMultipleOps()
+        
+        [BenchmarkCategory("MultiplyAdd"), Benchmark]
+        public void Vector256FloatMultipleOps()
         {
             ReadOnlySpan<Vector256<float>> d1 = MemoryMarshal.Cast<float, Vector256<float>>(new Span<float>(data, 0, numberOfFloatItems));
             ReadOnlySpan<Vector256<float>> d2 = MemoryMarshal.Cast<float, Vector256<float>>(new Span<float>(data2, 0, numberOfFloatItems));
@@ -138,7 +133,7 @@ namespace Core3IntrinsicsBenchmarks
                 r[i] = Fma.MultiplyAdd(r[i], d1[i], d1[i]);
                 r[i] = Fma.MultiplyAdd(d1[i], d2[i], r[i]);
             }
-        } */
+        }
 
         [BenchmarkCategory("MultiplyAdd"), Benchmark]
         public unsafe void Vector256FloatMultipleOpsUnsafe()
@@ -174,7 +169,7 @@ namespace Core3IntrinsicsBenchmarks
         }
 
         [BenchmarkCategory("MultiplyAdd"), Benchmark]
-        public unsafe void VectorTFloatMultipleOps()
+        public void VectorTFloatMultipleOps()
         {
             ReadOnlySpan<Vector<float>> d1 = MemoryMarshal.Cast<float, Vector<float>>(new Span<float>(data, 0, numberOfFloatItems));
             ReadOnlySpan<Vector<float>> d2 = MemoryMarshal.Cast<float, Vector<float>>(new Span<float>(data2, 0, numberOfFloatItems));

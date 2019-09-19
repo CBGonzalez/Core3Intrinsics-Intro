@@ -242,6 +242,16 @@ If you look through the different `Load...` instructions available, you´ll noti
 
 In the past, aligned data used to work much better that unaligned data, but modern processors don´t really care, as long as your data is aligned to the natural OS´s boundary in order to avoid stradling cache line or page boundaries (see [this comment by T. Gooding](https://devblogs.microsoft.com/dotnet/hardware-intrinsics-in-net-core/#comment-2942), for example) 
 
+Comparing aligned to unaligned on my machine:
+
+|                              Method | NumberOfBytes |           Mean |         Error |        StdDev |         Median | Ratio | RatioSD |
+|------------------------------------ |-------------- |---------------:|--------------:|--------------:|---------------:|------:|--------:|
+|            VectorStoreAlignedUnsafe |       8388608 | 1,508,063.2 ns | 30,407.034 ns | 26,955.044 ns | 1,501,035.9 ns |  1.00 |    0.00 |
+|          VectorStoreUnalignedUnsafe |       8388608 | 1,527,444.0 ns | 29,279.764 ns | 30,068.162 ns | 1,514,013.7 ns |  1.02 |    0.03 |
+| VectorStoreUnalignedToAlignedUnsafe |       8388608 | 1,485,540.1 ns | 12,131.046 ns | 10,129.973 ns | 1,486,236.1 ns |  0.99 |    0.02 |
+
+There´s really no meaningful difference for bigger data chunks.
+
 --------------------------------------
 --------------------------------------
 #### <a name="Cache"/> Dataset Sizes vs Caches ####

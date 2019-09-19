@@ -63,7 +63,8 @@ namespace Core3IntrinsicsBenchmarks
             alignedArrayPool.Return(data16Memory);
             alignedArrayPool.Return(store16Memory);
         }
-        
+
+        /*
         [BenchmarkCategory("Aligned Memory"), Benchmark]
         public unsafe void ScalarStore()
         {            
@@ -117,15 +118,15 @@ namespace Core3IntrinsicsBenchmarks
             }
                 
             
-        }        
-        
+        }  */
+
         [BenchmarkCategory("Aligned Memory"), Benchmark]
         public void ScalarCopyBlock()
         {
             Unsafe.CopyBlock(ref storeMemory.ByteRef, ref dataMemory.ByteRef, (uint)(numberOfFloatItems * sizeof(float)));             
         }
 
-
+        
         [BenchmarkCategory("Aligned Memory"), Benchmark(Baseline = true)]
         public unsafe void VectorStoreAlignedUnsafe()
         {
@@ -141,7 +142,7 @@ namespace Core3IntrinsicsBenchmarks
                 i++;
             }
         }
-
+        /*
         [BenchmarkCategory("Aligned Memory"), Benchmark]
         public unsafe void VectorStoreArrayMemPtr()
         {            
@@ -198,10 +199,10 @@ namespace Core3IntrinsicsBenchmarks
                 writeMem[i] = readMem[i];
                 i++;
             }
-        }
+        } */
 
         [BenchmarkCategory("Unaligned Memory"), Benchmark]
-        public unsafe void VectorStoreUnsafeUnaligned()
+        public unsafe void VectorStoreUnalignedUnsafe()
         {            
             float* currSpPtr = (float*)data16Memory.MemoryHandle.Pointer;
             float* currSpPtr2 = (float*)store16Memory.MemoryHandle.Pointer;
@@ -217,7 +218,7 @@ namespace Core3IntrinsicsBenchmarks
         }
 
         [BenchmarkCategory("Unaligned Memory"), Benchmark]
-        public unsafe void VectorStoreUnalignedToAligned()
+        public unsafe void VectorStoreUnalignedToAlignedUnsafe()
         {            
             float* currSpPtr = (float*)dataMemory.MemoryHandle.Pointer;
             float* currSpPtr2 = (float*)storeMemory.MemoryHandle.Pointer;
