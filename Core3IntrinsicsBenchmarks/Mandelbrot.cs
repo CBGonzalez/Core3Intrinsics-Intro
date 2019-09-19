@@ -118,7 +118,7 @@ namespace Core3IntrinsicsBenchmarks
             int resVectorNumber = 0;
 
             Vector256<float> xVec, yVec;
-            var zeroVec = Vector256<float>.Zero;
+            Vector256<float> zeroVec = Vector256<float>.Zero;
             var oneVec = Vector256.Create(1.0f);
             var fourVec = Vector256.Create(4.0f);
             var one4Vec = Vector256.Create(0.25f);
@@ -132,26 +132,27 @@ namespace Core3IntrinsicsBenchmarks
                 while (countX < xSpan.Length)
                 {
                     Vector256<float> currXVec = xSpan[countX];
-                    var xSquVec = zeroVec;
-                    var ySquVec = zeroVec;
-                    var zSquVec = zeroVec;
-                    var interVec = zeroVec;
+                    Vector256<float> xSquVec = zeroVec;
+                    Vector256<float> ySquVec = zeroVec;
+                    Vector256<float> zSquVec = zeroVec;
+                    Vector256<float> interVec = zeroVec;
                     Vector256<float> sumVector;
+                    
                     inter = 0;
                     bool goOn;
                     Vector256<float> temp = Avx.Subtract(currXVec, one4Vec);
                     Vector256<float> temp1 = Avx.Multiply(currYVec, currYVec);
                     qVec = Avx.Add(Avx.Multiply(temp, temp), temp1);
-                    var temp2 = Avx.Multiply(qVec, Avx.Add(qVec, temp));
+                    Vector256<float> temp2 = Avx.Multiply(qVec, Avx.Add(qVec, temp));
                     test = Avx.Compare(temp2, Avx.Multiply(one4Vec, temp1), FloatComparisonMode.OrderedGreaterThanNonSignaling);
                     goOn = (Avx.MoveMask(test) > 0);
                     if(goOn)
-                    {
+                    {                        
                         temp2 = Avx.Add(currXVec, oneVec);
                         temp = Avx.Add(Avx.Multiply(temp2, temp2), temp1);
                         test = Avx.Compare(temp, one16Vec, FloatComparisonMode.OrderedGreaterThanNonSignaling);
                         goOn = Avx.MoveMask(test) > 0;
-                        if(!goOn)
+                        if (!goOn)
                         {
                             interVec = Vector256.Create(255.0f); // make all point = maximum value
                         }
@@ -165,7 +166,7 @@ namespace Core3IntrinsicsBenchmarks
                         temp = Avx.Add(xVec, yVec);
                         zSquVec = Avx.Multiply(temp, temp);
                         test = Avx.Compare(Avx.Add(xSquVec, ySquVec), fourVec, FloatComparisonMode.OrderedLessThanOrEqualNonSignaling); // <= 4.0?
-                        sumVector = Avx.BlendVariable(Vector256<float>.Zero, oneVec, test);
+                        sumVector = Avx.BlendVariable(zeroVec, oneVec, test);
 
                         goOn = (Avx.MoveMask(test) > 0) & (inter < maxInter); //any of the values still alive, and inter still below cutoff value? 
                         if (goOn)

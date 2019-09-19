@@ -548,31 +548,23 @@ Intel Core i7-4500U CPU 1.80GHz (Haswell), 1 CPU, 4 logical and 2 physical cores
 |  FmaMultiplyAddvector256Float |            41943040 | 4,021.671 us |  75.5671 us |  70.6856 us |  0.78 |    0.04 |
 
 
-As expected for small number of operations inside the loop, the memory access times take their tolls: only a 22% time reduction for larger data sizes with vector intrinsics. (Although 22% could really be many hours for really huge jobs, of course...)
+As expected for small number of operations inside the loop, the memory access times take their tolls: only a 22% time reduction for larger data sizes with vector intrinsics, using safe operations. (Although 22% could really be many hours for really huge jobs, of course...)
 
-If we perform 3 FMA operations per step in the loop on the other hand, we get a consistent 2.2x speedup (see the source code for implementation of the test):
+If we perform 3 FMA operations per step in the loop and use pointers for the vectors on the other hand, we get a more consistent speedup: still 1.67x for bigger data sets (see the source code for implementation of the test):
 
-|                    Method | ParamCacheSizeBytes |        Mean |       Error |     StdDev |      Median | Ratio | RatioSD |
-|-------------------------- |-------------------- |------------:|------------:|-----------:|------------:|------:|--------:|
-|    **ScalarFloatMultipleOps** |              **262144** |    **41.23 us** |   **1.4217 us** |   **1.187 us** |    **40.87 us** |  **1.00** |    **0.00** |
-| Vector256FloatMultipleOps |              262144 |    19.35 us |   0.5057 us |   1.491 us |    19.01 us |  0.45 |    0.04 |
-|                           |                     |             |             |            |             |       |         |
-|    **ScalarFloatMultipleOps** |            **41943040** | **8,848.52 us** | **256.5261 us** | **748.299 us** | **9,073.76 us** |  **1.00** |    **0.00** |
-| Vector256FloatMultipleOps |            41943040 | 4,093.59 us |  80.3949 us |  95.704 us | 4,046.29 us |  0.45 |    0.04 |
+|                          Method | ParamCacheSizeBytes |        Mean |       Error |      StdDev |      Median | Ratio | RatioSD |
+|-------------------------------- |-------------------- |------------:|------------:|------------:|------------:|------:|--------:|
+|          ScalarFloatMultipleOps |              262144 |    40.88 us |   1.1768 us |   1.2592 us |    40.44 us |  1.00 |    0.00 |
+| Vector256FloatMultipleOpsUnsafe |              262144 |    17.75 us |   0.0963 us |   0.0752 us |    17.74 us |  0.43 |    0.02 |
+|         VectorTFloatMultipleOps |              262144 |    18.29 us |   0.1063 us |   0.0942 us |    18.29 us |  0.45 |    0.01 |
+|                                 |                     |             |             |             |             |       |         |
+|          ScalarFloatMultipleOps |            41943040 | 7,877.13 us | 142.2414 us | 126.0933 us | 7,851.68 us |  1.00 |    0.00 |
+| Vector256FloatMultipleOpsUnsafe |            41943040 | 4,659.43 us |  91.8353 us | 176.9355 us | 4,731.19 us |  0.60 |    0.02 |
+|         VectorTFloatMultipleOps |            41943040 | 5,239.05 us | 126.9370 us | 118.7370 us | 5,246.28 us |  0.67 |    0.02 |
 
 The processor will likely prefetch data while it performs operations, i´d assume, effectively hiding the access time.
 
-Comparing Vector256<float with `Vector<float>` we get:
-
-|                    Method | ParamCacheSizeBytes |        Mean |      Error |     StdDev | Ratio |
-|-------------------------- |-------------------- |------------:|-----------:|-----------:|------:|
-| Vector256FloatMultipleOps |              262144 |    17.93 us |  0.1017 us |  0.0849 us |  1.00 |
-|   VectorTFloatMultipleOps |              262144 |    18.39 us |  0.1776 us |  0.1483 us |  1.03 |
-|                           |                     |             |            |            |       |
-| Vector256FloatMultipleOps |            41943040 | 4,245.89 us | 50.9584 us | 45.1733 us |  1.00 |
-|   VectorTFloatMultipleOps |            41943040 | 5,083.92 us | 58.2083 us | 48.6065 us |  1.20 |
-
-Since `Vector<float>` does not implement Fma, the advantage of `Vector256` is to be expected.
+`Vector<T>` is slower, as expected, partly (probably) because it doesn´t implement `Fma` and partly since we are using safe code and the loop will be slowed down by range-checks.
 
 
 ##### Mixed `float` operations #####

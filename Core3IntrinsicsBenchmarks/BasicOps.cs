@@ -9,12 +9,12 @@ using System.Runtime.Intrinsics.X86;
 
 namespace Core3IntrinsicsBenchmarks
 {
-    //[DisassemblyDiagnoser(printAsm: true, printSource: true)]
+    [DisassemblyDiagnoser(printAsm: true, printSource: true)]
     //[GroupBenchmarksBy(BenchmarkLogicalGroupRule.ByCategory)]
     //[CategoriesColumn]
     public class BasicOps
     {
-        [Params(256 * 1024, 10 * 4 * 1024 * 1024)]
+        [Params(/*256 * 1024,*/ 10 * 4 * 1024 * 1024)]
         public int ParamCacheSizeBytes { get; set; }
 
         private int numberOfFloatItems, numberOfDoubleItems;
@@ -53,7 +53,7 @@ namespace Core3IntrinsicsBenchmarks
             var resultSpan = new Span<float>(resultMemory.MemoryHandle.Pointer, numberOfFloatItems);
             var dataDoubleSpan = new Span<double>(dataDoubleMemory.MemoryHandle.Pointer, numberOfDoubleItems);
             var resultDoubleSpan = new Span<double>(resultDoubleMemory.MemoryHandle.Pointer, numberOfDoubleItems);
-            Avx2.GatherVector256()
+
             for (int i = 0; i < numberOfFloatItems; i++)
             {                
                 dataSpan[i] = i + 1.0f;
@@ -107,7 +107,7 @@ namespace Core3IntrinsicsBenchmarks
                 sp2[i] = sp1[i] * sp12[i] + sp13[i];
             }
         } */
-        /*
+        
         [BenchmarkCategory("MultiplyAdd"), Benchmark(Baseline = true)]
         public unsafe void ScalarFloatMultipleOps()
         {
@@ -123,7 +123,7 @@ namespace Core3IntrinsicsBenchmarks
                 sp2[i] = sp1[i] * sp1[i] + sp2[i];
             }
         }
-        */
+        /*
         [BenchmarkCategory("MultiplyAdd"), Benchmark(Baseline = true)]
         public unsafe void Vector256FloatMultipleOps()
         {
@@ -137,6 +137,39 @@ namespace Core3IntrinsicsBenchmarks
                 r[i] = Fma.MultiplyAdd(d1[i], d2[i], d3[i]);
                 r[i] = Fma.MultiplyAdd(r[i], d1[i], d1[i]);
                 r[i] = Fma.MultiplyAdd(d1[i], d2[i], r[i]);
+            }
+        } */
+
+        [BenchmarkCategory("MultiplyAdd"), Benchmark]
+        public unsafe void Vector256FloatMultipleOpsUnsafe()
+        {
+            fixed (float* d1Ptr = &data[0])
+            {
+                fixed (float* d2Ptr = &data2[0])
+                {
+                    fixed (float* d3Ptr = &data3[0])
+                    {
+                        fixed (float* resPtr = &result[0])
+                        {
+                            float* currD1 = d1Ptr;
+                            float* currD2 = d2Ptr;
+                            float* currD3 = d3Ptr;
+                            float* currRes = resPtr;
+                            float* limitPtr = d1Ptr + numberOfFloatItems;
+                            while (currD1 < limitPtr)
+                            {
+                                Avx.Store(currRes, Fma.MultiplyAdd(Avx.LoadVector256(currD1), Avx.LoadVector256(currD2), Avx.LoadVector256(currD3)));
+                                Avx.Store(currRes, Fma.MultiplyAdd(Avx.LoadVector256(currRes), Avx.LoadVector256(currD1), Avx.LoadVector256(currD1)));
+                                Avx.Store(currRes, Fma.MultiplyAdd(Avx.LoadVector256(currD1), Avx.LoadVector256(currD2), Avx.LoadVector256(currRes)));
+                                currD1 += 8;
+                                currD2 += 8;
+                                currD3 += 8;
+                                currRes += 8;
+                            }
+                        }
+                    }
+                }
+
             }
         }
 
@@ -155,6 +188,8 @@ namespace Core3IntrinsicsBenchmarks
                 r[i] = d1[i] * d2[i] + r[i];
             }
         }
+
+
         /*
         [BenchmarkCategory("MultiplyAdd"), Benchmark(Baseline = true)]
         public unsafe void DoubleMultipleOps()

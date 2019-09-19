@@ -10,10 +10,10 @@ namespace Core3IntrinsicsBenchmarks
         static void Main()
         {
             //var summary = BenchmarkRunner.Run<MemoryBenches>();
-            //var summary = BenchmarkRunner.Run<BasicOps>();
+            var summary = BenchmarkRunner.Run<BasicOps>();
             //var summary = BenchmarkRunner.Run<IntegerBasicOps>();
             //var summary = BenchmarkRunner.Run<TrigonometricOps>();
-            var summary = BenchmarkRunner.Run<Mandelbrot>();
+            //var summary = BenchmarkRunner.Run<Mandelbrot>();
             //var summary = BenchmarkRunner.Run<ReadmeBenches>();
         }
     }
