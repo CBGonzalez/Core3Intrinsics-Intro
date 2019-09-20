@@ -587,3 +587,29 @@ The [Mandelbrot set](https://en.wikipedia.org/wiki/Mandelbrot_set) is an all-tim
 | Vector256Mandel |  25.98 ms | 0.1739 ms | 0.1626 ms |  0.19 |
 
 A 5.3x speedup is nice! The vector loop could probably be further optimized though, I just did a naïve translation of the scalar code.
+
+##### Some `int` Operations #####
+
+Some basic integer operations show an average 1.5  - 1.6x speed increase with intrinsics for one operation, probably illustrating that modern processors are already very good at handling ints and, again perhaps, memory access times.
+
+|                  Method | NumberOfItems |     Mean |     Error |    StdDev | Ratio | RatioSD |
+|------------------------ |-------------- |---------:|----------:|----------:|------:|--------:|
+|                  IntAdd |       4096000 | 4.811 ms | 0.0262 ms | 0.0219 ms |  1.00 |    0.00 |
+|         IntAddVector256 |       4096000 | 3.041 ms | 0.0499 ms | 0.0442 ms |  0.63 |    0.01 |
+|                  IntXor |       4096000 | 4.834 ms | 0.0838 ms | 0.0700 ms |  1.00 |    0.01 |
+|         IntXorVector256 |       4096000 | 3.028 ms | 0.0457 ms | 0.0405 ms |  0.63 |    0.01 |
+|             IntMultiply |       4096000 | 4.777 ms | 0.1163 ms | 0.0971 ms |  0.99 |    0.02 |
+| IntMultiplyLowVector256 |       4096000 | 3.013 ms | 0.0380 ms | 0.0337 ms |  0.63 |    0.01 |
+|            IntShiftLeft |       4096000 | 4.057 ms | 0.1107 ms | 0.1036 ms |  0.84 |    0.02 |
+|   IntShiftLeftVector256 |       4096000 | 3.063 ms | 0.0638 ms | 0.0597 ms |  0.64 |    0.01 |
+|                  IntMax |       4096000 | 4.757 ms | 0.1295 ms | 0.1272 ms |  0.99 |    0.03 |
+|         IntMaxVector256 |       4096000 | 3.018 ms | 0.0286 ms | 0.0239 ms |  0.63 |    0.01 |
+
+Chaing three ops inside the loop gives:
+
+|                  Method | NumberOfItems |     Mean |     Error |    StdDev | Ratio |
+|------------------------ |-------------- |---------:|----------:|----------:|------:|
+|          IntMultipleOps |       4096000 | 5.430 ms | 0.1067 ms | 0.1048 ms |  1.00 |
+| IntMultipleOpsvector256 |       4096000 | 3.016 ms | 0.0551 ms | 0.0516 ms |  0.56 |
+
+Only a small improvement, so probably processor optimization plays the bigger role.
