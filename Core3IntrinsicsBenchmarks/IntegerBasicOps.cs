@@ -16,10 +16,11 @@ namespace Core3IntrinsicsBenchmarks
         [Params(/*4 * 1024,*/ 4000 * 1024)]
         public int NumberOfItems {get; set;}
 
+        private const int bmpWidth = 1920, bmpHeight = 1080;
         private AlignedArrayPool<int> intPool;
         private AlignedArrayPool<short> shortPool;
         private AlignedArrayPool<long> longPool;
-        private AlignedMemoryHandle<int> intData, intStore;
+        private AlignedMemoryHandle<int> intData, intStore, bmpData, bmpStore;
         private AlignedMemoryHandle<short> shortData, shortStore;
         private AlignedMemoryHandle<long> longData, longStore;
 
@@ -32,6 +33,8 @@ namespace Core3IntrinsicsBenchmarks
 
             intData = intPool.Rent(NumberOfItems);
             intStore = intPool.Rent(NumberOfItems);
+            bmpData = intPool.Rent(bmpWidth * bmpHeight * 4);
+            bmpStore = intPool.Rent(bmpWidth * bmpHeight * 4);
             shortData = shortPool.Rent(NumberOfItems);
             shortStore = shortPool.Rent(NumberOfItems);
             longData = longPool.Rent(NumberOfItems);
@@ -47,6 +50,10 @@ namespace Core3IntrinsicsBenchmarks
                 longData.Memory.Span[i] = intData.Memory.Span[i];
                 longStore.Memory.Span[i] = intStore.Memory.Span[i];
             }
+            for(int i = 0; i < bmpData.Memory.Span.Length; i++)
+            {
+                bmpData.Memory.Span[i] = i;
+            }
         }
 
         [GlobalCleanup]
@@ -54,6 +61,8 @@ namespace Core3IntrinsicsBenchmarks
         {
             intPool.Return(intData);
             intPool.Return(intStore);
+            intPool.Return(bmpData);
+            intPool.Return(bmpStore);
             shortPool.Return(shortData);
             shortPool.Return(shortStore);
             longPool.Return(longData);
@@ -254,7 +263,7 @@ namespace Core3IntrinsicsBenchmarks
             }
         } */
 
-        [BenchmarkCategory("Chained"), Benchmark(Baseline = true)]
+        [BenchmarkCategory("Chained1"), Benchmark(Baseline = true)]
         public unsafe void IntMultipleOps()
         {
             var sp1 = new ReadOnlySpan<int>(intData.MemoryHandle.Pointer, NumberOfItems);
@@ -266,7 +275,7 @@ namespace Core3IntrinsicsBenchmarks
             }
         }
 
-        [BenchmarkCategory("Chained"), Benchmark]
+        [BenchmarkCategory("Chained1"), Benchmark]
         public unsafe void IntMultipleOpsvector256()
         {
             ReadOnlySpan<Vector256<int>> sp1 = MemoryMarshal.Cast<int, Vector256<int>>(intData.Memory.Span);
@@ -277,6 +286,61 @@ namespace Core3IntrinsicsBenchmarks
             for (int i = 0; i < sp1.Length; i++)
             {
                 sp2[i] = Avx2.MultiplyLow(Avx2.ShiftLeftLogical(Avx2.Max(sp1[i], sp2[i]), 2), three);               
+            }
+        }
+
+        [BenchmarkCategory("Chained2"), Benchmark(Baseline = true)]
+        public unsafe void IntTranspose()
+        {
+            var sp1 = new ReadOnlySpan<int>(bmpData.MemoryHandle.Pointer, bmpHeight * bmpWidth * 4);
+            var sp2 = new Span<int>(bmpStore.MemoryHandle.Pointer, bmpHeight * bmpWidth * 4);
+            int numberOfElements = Vector256<int>.Count;
+
+            int[] colorComponents = new int[bmpWidth * 4];
+            int runningCounter = 0;//, byteCounter;            
+            int start;
+            for (int y = 0; y < bmpHeight; y++)
+            {
+                Span<int> currColors = sp2.Slice(runningCounter, bmpWidth * 4);
+                for (int x = 0; x < bmpWidth; x += numberOfElements)
+                {
+                    for (int i = 0; i < numberOfElements; i++)
+                    {
+                        start = x * 4 + i;
+                        colorComponents[start] = sp1[runningCounter];
+                        colorComponents[start + numberOfElements] = sp1[runningCounter + 1];
+                        colorComponents[start + (2 * numberOfElements)] = sp1[runningCounter + 2];
+                        colorComponents[start + (3 * numberOfElements)] = sp1[runningCounter + 3];
+                        runningCounter += 4;
+                    }
+                }
+                colorComponents.CopyTo(currColors);
+
+            }
+        }
+
+        [BenchmarkCategory("Chained2"), Benchmark]
+        public unsafe void IntTransposeVector256() // see https://software.intel.com/sites/default/files/m/d/4/1/d/8/Image_Processing_-_whitepaper_-_100pct_CCEreviewed_update.pdf
+        {
+            Span<Vector256<int>> originVectors = MemoryMarshal.Cast<int, Vector256<int>>(bmpData.Memory.Span);
+            Span<Vector256<int>> transposedVectors = MemoryMarshal.Cast<int, Vector256<int>>(bmpStore.Memory.Span);
+            Vector256<int> pm0, pm1, pm2, pm3, up0, up1, up2, up3;
+            for (int i = 0; i < originVectors.Length; i += 4)
+            {
+                pm0 = Avx.Permute2x128(originVectors[i], originVectors[i + 2], 0x20);
+                pm1 = Avx.Permute2x128(originVectors[i + 1], originVectors[i + 3], 0x20);
+                pm2 = Avx.Permute2x128(originVectors[i], originVectors[i + 2], 0x31);
+                pm3 = Avx.Permute2x128(originVectors[i + 1], originVectors[i + 3], 0x31);
+
+                up0 = Avx2.UnpackLow(pm0, pm1);
+                up1 = Avx2.UnpackHigh(pm0, pm1);
+                up2 = Avx2.UnpackLow(pm2, pm3);
+                up3 = Avx2.UnpackHigh(pm2, pm3);
+
+                transposedVectors[i] = Avx2.UnpackLow(up0, up2);
+                transposedVectors[i + 1] = Avx2.UnpackHigh(up0, up2);
+                transposedVectors[i + 2] = Avx2.UnpackLow(up1, up3);
+                transposedVectors[i + 3] = Avx2.UnpackHigh(up1, up3);
             }
         }
 
