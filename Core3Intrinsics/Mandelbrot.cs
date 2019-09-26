@@ -38,7 +38,7 @@ namespace Core3Intrinsics
                 resolutionY -= resolutionY % 8;
             }
             STEP_X = (RIGHT_X - LEFT_X) / resolutionX;
-            STEP_Y = ratioy_x * STEP_X;
+            STEP_Y = STEP_X; // ratioy_x * STEP_X; Bug from reddit comment
             numberOfPoints = resolutionX * resolutionY;
             if(numberOfPoints % 8 != 0)
             {
@@ -116,7 +116,7 @@ namespace Core3Intrinsics
                 resolutionY -= resolutionY % 8;
             }
             STEP_X = (RIGHT_X - LEFT_X) / resolutionX;
-            STEP_Y = ratioy_x * STEP_X;
+            STEP_Y = STEP_X; // ratioy_x * STEP_X; Bug from reddit comment
             numberOfPoints = resolutionX * resolutionY;
             results2 = new float[numberOfPoints];
 
@@ -166,9 +166,8 @@ namespace Core3Intrinsics
                         ySquVec = Avx.Multiply(yVec, yVec);
                         zSquVec = Avx.Multiply(Avx.Add(xVec, yVec), Avx.Add(xVec, yVec));
                         Vector256<float> test = Avx.Compare(Avx.Add(xSquVec, ySquVec), fourVec, FloatComparisonMode.OrderedLessThanOrEqualNonSignaling); // <= 4.0?
-                        sumVector = Avx.BlendVariable(Vector256<float>.Zero, sumVector, test); // selects from second if true, from first otherwise                            
-                        
-                        goOn = (Avx.MoveMask(test) > 0) & (inter < maxInter); //any of the values still alive, and inter still below cutoff value?  
+                        sumVector = Avx.BlendVariable(Vector256<float>.Zero, sumVector, test); // selects from second if true, from first otherwise                        
+                        goOn = (Avx.MoveMask(test) > 0) & (inter < maxInter); //any of the values still alive, and inter still below cutoff value? 
                         if (goOn)
                         {
                             interVec = Avx.Add(interVec, sumVector);

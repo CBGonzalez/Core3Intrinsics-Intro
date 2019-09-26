@@ -33,8 +33,8 @@ namespace Core3IntrinsicsBenchmarks
             resolutionX = 1920;            
             resolutionY = (int)MathF.Floor(resolutionX * ratioy_x);            
             float STEP_X = (RIGHT_X - LEFT_X) / resolutionX;
-            float STEP_Y = (TOP_Y - BOTT_Y) / resolutionY;
-            
+            float STEP_Y = STEP_X; // (TOP_Y - BOTT_Y) / resolutionY; Bug from reddit comment
+
             numberOfPoints = resolutionX * resolutionY;
             results = new float[numberOfPoints];
             xPoints = new float[resolutionX];
